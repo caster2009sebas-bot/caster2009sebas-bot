@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Propina Simple</title>
+    <!-- Carga de Tailwind CSS para el diseño y clases de utilidad -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CSS INTEGRADO: Estilos, Fuente y Animación -->
+    <style>
+        /* 1. Estilo para usar la fuente 'Roboto Mono' y el fondo Gris Oscuro (#1F2937) */
+        body { 
+            font-family: 'Roboto Mono', monospace; /* Fuente tecnológica */
+            background-color: #1F2937; /* Gris oscuro más claro (Tailwind gray-800) */
+        }
+
+        /* 2. Animación de fondo: más notoria, ajustada al gris */
+        .animated-bg {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .animated-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Degradado ajustado a los nuevos tonos de gris */
+            background: radial-gradient(circle at top left, rgba(75, 85, 99, 0.6) 0%, rgba(31, 41, 55, 0) 70%); 
+            animation: flow 25s linear infinite alternate; 
+            pointer-events: none;
+            opacity: 0.5; 
+            z-index: 0;
+        }
+
+        @keyframes flow {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            100% { transform: translate(200px, 150px) rotate(20deg) scale(1.2); }
+        }
+    </style>
+</head>
+<!-- Aplicamos la clase de animación al body -->
+<body class="animated-bg flex items-center justify-center min-h-screen p-4">
+
+    <!-- Contenedor principal para la vista horizontal (responsive) -->
+    <div class="w-full max-w-4xl bg-gray-700 rounded-xl shadow-2xl border border-gray-600 md:flex md:min-h-[400px] z-10">
+        
+        <!-- PANEL IZQUIERDO: Entrada de Datos (Formulario) -->
+        <!-- Usa el color carbón (#191919) para crear contraste con el fondo gris claro del body. -->
+        <div class="p-8 md:w-1/2 bg-[#191919] rounded-t-xl md:rounded-l-xl md:rounded-tr-none">
+            <h1 class="text-3xl font-extrabold text-white mb-4 text-center">
+                Calculadora de Propina
+            </h1>
+            <p class="text-gray-400 mb-8 text-center">
+                Ingresa el monto de la cuenta.
+            </p>
+
+            <form id="tipForm" class="space-y-6">
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-300 mb-2">
+                        Monto Fijo (Total de la cuenta):
+                    </label>
+                    <div class="relative mt-1 rounded-lg shadow-sm">
+                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <span class="text-gray-400 sm:text-sm">$</span>
+                        </div>
+                        <input
+                            type="number"
+                            id="amount"
+                            step="0.01"
+                            min="0"
+                            placeholder="Ej. 100.00"
+                            required
+                            class="block w-full rounded-lg border-gray-600 bg-gray-800 text-white pl-7 pr-12 py-3 text-lg focus:ring-gray-500 focus:border-gray-500 transition duration-150 ease-in-out border"
+                        >
+                    </div>
+                </div>
+
+                <!-- Contenedor de botones (controlado por script.js) -->
+                <div id="buttonContainer" class="space-y-4">
+                    <!-- Botón de Calcular (Gris) -->
+                    <button
+                        type="button"
+                        id="calculateButton"
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-medium text-white bg-gray-600 hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 ease-in-out transform hover:scale-[1.01] hover:shadow-xl focus:ring-offset-gray-900"
+                    >
+                        Calcular Propina
+                    </button>
+
+                    <!-- Botón de Pagar (Cian para acentuar, oculto inicialmente) -->
+                    <button
+                        type="button"
+                        id="payButton"
+                        style="display: none;" 
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-medium text-white bg-cyan-600 hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition duration-150 ease-in-out transform hover:scale-[1.01] hover:shadow-xl focus:ring-offset-gray-900"
+                    >
+                        Pagar Total
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- PANEL DERECHO: Resultados de la Transacción (Horizontal) -->
+        <!-- Muestra el resultado de la transacción (controlado por el script) -->
+        <div id="displayPanel" class="p-8 md:w-1/2 flex items-center justify-center bg-gray-700 rounded-b-xl md:rounded-r-xl md:rounded-bl-none">
+            <div id="resultContainer" class="w-full text-center">
+                <p class="text-gray-300 text-lg">
+                    Los detalles de la transacción aparecerán aquí después del cálculo.
+                </p>
+                <p class="text-xs text-gray-500 mt-2">(Propina Fija: 10%)</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: Pago Exitoso (Ventana emergente) -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 hidden" onclick="hideSuccessModal()">
+        <!-- Contenido del Modal -->
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700 transform transition-all duration-300 scale-95 opacity-0" id="modalContent" onclick="event.stopPropagation()">
+            <div class="text-center">
+                <!-- Ícono de cheque cian -->
+                <svg class="mx-auto h-12 w-12 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="mt-4 text-2xl leading-6 font-extrabold text-white">¡Pago Exitoso!</h3>
+                <div class="mt-2">
+                    <p class="text-sm text-gray-300">
+                        Tu transacción ha sido procesada correctamente y la propina ha sido incluida. ¡Gracias!
+                    </p>
+                </div>
+                <div class="mt-5 sm:mt-6">
+                    <button type="button" onclick="hideSuccessModal()" class="inline-flex justify-center w-full rounded-lg border border-transparent shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:text-lg transition duration-150 ease-in-out">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT INTEGRADO: Lógica de la Calculadora -->
+    <script>
+        // Lógica principal de la calculadora de propinas en 3 pasos: Calcular -> Pagar -> Modal
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Referencias a elementos del DOM
+            const amountInput = document.getElementById('amount');
+            const calculateButton = document.getElementById('calculateButton');
+            const payButton = document.getElementById('payButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const successModal = document.getElementById('successModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            // Variable para almacenar el total calculado antes de pagar
+            let currentTotal = 0;
+
+            // --- Funciones del Modal ---
+
+            /**
+             * Muestra la ventana modal con animación.
+             */
+            window.showSuccessModal = () => {
+                successModal.classList.remove('hidden');
+                setTimeout(() => {
+                    modalContent.classList.remove('opacity-0', 'scale-95');
+                    modalContent.classList.add('opacity-100', 'scale-100');
+                }, 10);
+            };
+
+            /**
+             * Oculta la ventana modal con animación y reinicia el estado de la aplicación.
+             */
+            window.hideSuccessModal = () => {
+                modalContent.classList.remove('opacity-100', 'scale-100');
+                modalContent.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    successModal.classList.add('hidden');
+                    resetState(); // Reiniciar la UI después de cerrar la modal
+                }, 300); // Coincide con la duración de la transición CSS
+            };
+            
+            /**
+             * Función para reiniciar la UI a su estado inicial.
+             */
+            const resetState = () => {
+                amountInput.value = '';
+                calculateButton.style.display = 'block';
+                payButton.style.display = 'none';
+                currentTotal = 0;
+                resultContainer.innerHTML = `
+                    <p class="text-gray-300 text-lg">
+                        Los detalles de la transacción aparecerán aquí después del cálculo.
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">(Propina Fija: 10%)</p>
+                `;
+            };
+
+            // Asegurarse de que el estado inicial sea correcto al cargar la página
+            resetState();
+
+            // --- PASO 2: Calcular Propina (Botón 'Calcular') ---
+            calculateButton.addEventListener('click', async function() {
+                // Validación del monto
+                const amount = parseFloat(amountInput.value);
+                
+                if (isNaN(amount) || amount <= 0) {
+                    resultContainer.innerHTML = '<div class="p-4 bg-red-900 border border-red-700 text-red-300 rounded-lg text-center font-medium">Por favor, ingresa un monto válido.</div>';
+                    payButton.style.display = 'none';
+                    return;
+                }
+
+                // Mostrar estado de carga
+                resultContainer.innerHTML = '<div class="flex justify-center items-center p-4 text-gray-300"><svg class="animate-spin -ml-1 mr-3 h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Calculando...</div>';
+
+                try {
+                    const tipRate = 0.10; // 10%
+                    const tipAmount = amount * tipRate;
+                    const totalAmount = amount + tipAmount;
+                    currentTotal = totalAmount; // Almacenar el total para el paso de pago
+
+                    const tipDisplay = tipAmount.toFixed(2);
+                    const totalDisplay = totalAmount.toFixed(2);
+                    const amountDisplay = amount.toFixed(2);
+
+                    // Esperamos un momento para que se vea el "Calculando..."
+                    await new Promise(resolve => setTimeout(resolve, 500)); 
+
+                    // Estructura de resultados
+                    resultContainer.innerHTML = `
+                        <div class="p-5 bg-cyan-900 border-l-4 border-cyan-700 rounded-lg shadow-2xl text-left">
+                            <p class="text-2xl font-bold text-cyan-300 mb-2">Resumen de Propina</p>
+                            <hr class="border-gray-700 mb-3" />
+                            
+                            <div class="space-y-2 text-gray-200">
+                                <p class="flex justify-between">
+                                    Monto Original: 
+                                    <span class="font-semibold text-white">$${amountDisplay}</span>
+                                </p>
+                                <p class="flex justify-between">
+                                    Propina (10%): 
+                                    <span class="font-semibold text-cyan-400">$${tipDisplay}</span>
+                                </p>
+                            </div>
+                            
+                            <div class="mt-4 pt-3 border-t border-gray-700 flex justify-between items-center">
+                                <p class="text-xl font-extrabold text-white">Total a Pagar:</p> 
+                                <p class="text-3xl font-extrabold text-cyan-400">$${totalDisplay}</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 p-4 bg-gray-700 rounded-lg text-center font-medium text-gray-200 shadow-md">
+                            Presiona 'Pagar Total' para finalizar la transacción.
+                        </div>
+                    `;
+                    
+                    // PASO 3: Ocultar Calcular y Mostrar Pagar
+                    calculateButton.style.display = 'none';
+                    payButton.style.display = 'block';
+
+                } catch (error) {
+                    console.error('Error al calcular:', error);
+                    resultContainer.innerHTML = `
+                        <div class="p-4 bg-red-900 border border-red-700 text-red-300 rounded-lg text-center font-medium">
+                            Error interno al realizar el cálculo.
+                        </div>
+                    `;
+                    // Si hay error, volvemos a mostrar solo el botón de calcular
+                    payButton.style.display = 'none';
+                    calculateButton.style.display = 'block';
+                }
+
+            });
+
+            // --- PASO 4: Pagar Total (Muestra la Modal 'Pago Exitoso') ---
+            payButton.addEventListener('click', function() {
+                if (currentTotal > 0) {
+                    showSuccessModal();
+                } else {
+                    // Si se presiona pagar sin calcular (medida de seguridad)
+                    resultContainer.innerHTML = '<div class="p-4 bg-red-900 border border-red-700 text-red-300 rounded-lg text-center font-medium">Por favor, calcula el monto primero.</div>';
+                    payButton.style.display = 'none';
+                    calculateButton.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
